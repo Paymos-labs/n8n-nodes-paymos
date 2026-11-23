@@ -24,9 +24,10 @@ function createWebhookMock(options: {
 	body?: unknown;
 	headers?: Record<string, string | string[] | undefined>;
 }) {
+	const setHeaderMock = vi.fn();
 	const jsonMock = vi.fn();
 	const statusMock = vi.fn().mockReturnValue({ json: jsonMock });
-	const res = { status: statusMock, json: jsonMock };
+	const res = { setHeader: setHeaderMock, status: statusMock, json: jsonMock };
 	const req = {
 		rawBody: options.rawBody,
 		body: options.body,
@@ -58,7 +59,7 @@ function createWebhookMock(options: {
 		},
 	} as unknown as IWebhookFunctions;
 
-	return { context, statusMock, jsonMock };
+	return { context, setHeaderMock, statusMock, jsonMock };
 }
 
 describe('PaymosTrigger webhook node', () => {
@@ -125,6 +126,14 @@ describe('PaymosTrigger webhook node', () => {
 		const rawBody = JSON.stringify(payload);
 		const validSig = makeSignature(secret, now, rawBody);
 
+		const expectedProblem = {
+			type: 'about:blank',
+			title: 'Unauthorized',
+			status: 401,
+			detail: 'Invalid webhook signature.',
+			code: 'webhook_signature_invalid',
+		};
+
 		// 1. Missing rawBody (even if parsed req.body is present: NO fallback allowed!)
 		const missingRaw = createWebhookMock({
 			rawBody: undefined,
@@ -133,8 +142,9 @@ describe('PaymosTrigger webhook node', () => {
 		});
 		const missingRes = await trigger.webhook.call(missingRaw.context);
 		expect(missingRes).toEqual({ noWebhookResponse: true });
+		expect(missingRaw.setHeaderMock).toHaveBeenCalledWith('Content-Type', 'application/problem+json');
 		expect(missingRaw.statusMock).toHaveBeenCalledWith(401);
-		expect(missingRaw.jsonMock).toHaveBeenCalledWith({ error: 'invalid_webhook_signature' });
+		expect(missingRaw.jsonMock).toHaveBeenCalledWith(expectedProblem);
 
 		// 2. Tampered rawBody
 		const tampered = createWebhookMock({
@@ -143,8 +153,9 @@ describe('PaymosTrigger webhook node', () => {
 		});
 		const tamperedRes = await trigger.webhook.call(tampered.context);
 		expect(tamperedRes).toEqual({ noWebhookResponse: true });
+		expect(tampered.setHeaderMock).toHaveBeenCalledWith('Content-Type', 'application/problem+json');
 		expect(tampered.statusMock).toHaveBeenCalledWith(401);
-		expect(tampered.jsonMock).toHaveBeenCalledWith({ error: 'invalid_webhook_signature' });
+		expect(tampered.jsonMock).toHaveBeenCalledWith(expectedProblem);
 
 		// 3. Expired timestamp (> 300s skew)
 		const staleTs = now - 301;
@@ -155,8 +166,9 @@ describe('PaymosTrigger webhook node', () => {
 		});
 		const staleRes = await trigger.webhook.call(stale.context);
 		expect(staleRes).toEqual({ noWebhookResponse: true });
+		expect(stale.setHeaderMock).toHaveBeenCalledWith('Content-Type', 'application/problem+json');
 		expect(stale.statusMock).toHaveBeenCalledWith(401);
-		expect(stale.jsonMock).toHaveBeenCalledWith({ error: 'invalid_webhook_signature' });
+		expect(stale.jsonMock).toHaveBeenCalledWith(expectedProblem);
 	});
 
 	it('returns { webhookResponse: { received: true, ignored: true } } without calling res.json for non-selected events', async () => {

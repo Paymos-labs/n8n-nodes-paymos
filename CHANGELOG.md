@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-11-23
+
+- fix(tests,blazor,n8n): resolve all failing Fast suite, architecture guard, and MoneyFormat notification tests
+
 ## [0.2.2] - 2026-11-23
 
 - fix(n8n): align PaymosApi.authenticate wire URL with canonical HMAC query and polish RU docs tone

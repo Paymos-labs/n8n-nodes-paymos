@@ -46,6 +46,22 @@ interface RawBodyRequest {
 	headers?: Record<string, string | string[] | undefined>;
 }
 
+const INVALID_WEBHOOK_SIGNATURE_PROBLEM = {
+	type: 'about:blank',
+	title: 'Unauthorized',
+	status: 401,
+	detail: 'Invalid webhook signature.',
+	code: 'webhook_signature_invalid',
+} as const;
+
+function rejectInvalidWebhookSignature(
+	res: ReturnType<IWebhookFunctions['getResponseObject']>,
+): IWebhookResponseData {
+	res.setHeader?.('Content-Type', 'application/problem+json');
+	res.status(401).json(INVALID_WEBHOOK_SIGNATURE_PROBLEM);
+	return { noWebhookResponse: true };
+}
+
 function readSignatureHeader(
 	headers: Record<string, string | string[] | undefined> | undefined,
 ): string {
@@ -262,14 +278,12 @@ export class PaymosTrigger implements INodeType {
 			const credentials = (await this.getCredentials('paymosApi')) as Partial<PaymosApiCredentials>;
 			webhookSecret = validateWebhookSecret(credentials);
 		} catch {
-			res.status(401).json({ error: 'invalid_webhook_signature' });
-			return { noWebhookResponse: true };
+			return rejectInvalidWebhookSignature(res);
 		}
 
 		const rawBody = req?.rawBody;
 		if (rawBody === undefined || rawBody === null || (typeof rawBody !== 'string' && !Buffer.isBuffer(rawBody))) {
-			res.status(401).json({ error: 'invalid_webhook_signature' });
-			return { noWebhookResponse: true };
+			return rejectInvalidWebhookSignature(res);
 		}
 
 		const headerData = this.getHeaderData() as Record<string, string | string[] | undefined> | undefined;
@@ -284,8 +298,7 @@ export class PaymosTrigger implements INodeType {
 		try {
 			event = parseWebhookEvent<IDataObject>(rawBody, signatureHeader, webhookSecret, toleranceSeconds);
 		} catch {
-			res.status(401).json({ error: 'invalid_webhook_signature' });
-			return { noWebhookResponse: true };
+			return rejectInvalidWebhookSignature(res);
 		}
 
 		const subscribedEvents = this.getNodeParameter('events', []) as string[];
