@@ -3,11 +3,12 @@ import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
+	IDataObject,
 	IHttpRequestOptions,
 	Icon,
 	INodeProperties,
 } from 'n8n-workflow';
-import { signRequest, type QueryParams } from '../src/crypto/signing';
+import { canonicalizeQuery, signRequest, type QueryParams } from '../src/crypto/signing';
 import {
 	PAYMOS_N8N_USER_AGENT,
 	validatePaymentApiCredentials,
@@ -86,58 +87,95 @@ export class PaymosApi implements ICredentialType {
 
 		const method = (requestOptions.method ?? 'GET').toUpperCase();
 		const rawUrl = typeof requestOptions.url === 'string' ? requestOptions.url : '/v1/invoices';
+		const isAbsolute = /^https?:\/\//i.test(rawUrl);
+		let originPrefix = '';
 		let path: string;
 		let inlineQuery: string | undefined;
-		if (/^https?:\/\//i.test(rawUrl)) {
+		if (isAbsolute) {
 			const parsedUrl = new URL(rawUrl);
+			originPrefix = parsedUrl.origin;
 			path = parsedUrl.pathname || '/';
 			inlineQuery = parsedUrl.search ? parsedUrl.search.slice(1) : undefined;
 		} else {
-			const [pathPart, queryPart] = rawUrl.split('?', 2);
+			const withoutHash = rawUrl.split('#')[0] ?? rawUrl;
+			const queryIdx = withoutHash.indexOf('?');
+			const pathPart = queryIdx === -1 ? withoutHash : withoutHash.slice(0, queryIdx);
+			inlineQuery = queryIdx === -1 ? undefined : withoutHash.slice(queryIdx + 1);
 			path = pathPart.startsWith('/') ? pathPart : `/${pathPart}`;
-			inlineQuery = queryPart;
 		}
-		const mergedQuery: QueryParams = { ...((requestOptions.qs as QueryParams | undefined) ?? {}) };
+
+		const mergedQuery: QueryParams = {};
+		const rawQs = requestOptions.qs as QueryParams | undefined;
+		if (rawQs) {
+			for (const [k, v] of Object.entries(rawQs)) {
+				mergedQuery[k] = Array.isArray(v) ? [...v] : v;
+			}
+		}
 		if (inlineQuery !== undefined && inlineQuery !== '') {
 			for (const [k, v] of new URLSearchParams(inlineQuery).entries()) {
 				const existing = mergedQuery[k];
 				if (existing === undefined) {
 					mergedQuery[k] = v;
 				} else if (Array.isArray(existing)) {
-					existing.push(v);
+					mergedQuery[k] = [...existing, v];
 				} else {
 					mergedQuery[k] = [String(existing), v];
 				}
 			}
 		}
-		const query: QueryParams | undefined =
-			Object.keys(mergedQuery).length > 0 ? mergedQuery : undefined;
-		const body =
-			requestOptions.body === undefined || requestOptions.body === null
-				? ''
-				: typeof requestOptions.body === 'string'
-					? requestOptions.body
-					: JSON.stringify(requestOptions.body);
+		const canonicalQuery =
+			Object.keys(mergedQuery).length > 0 ? canonicalizeQuery(mergedQuery) : '';
+
+		let serializedBody = '';
+		let replaceBody = false;
+		if (requestOptions.body !== undefined && requestOptions.body !== null) {
+			if (typeof requestOptions.body === 'string') {
+				serializedBody = requestOptions.body;
+			} else if (Buffer.isBuffer(requestOptions.body)) {
+				serializedBody = requestOptions.body.toString('utf8');
+			} else {
+				serializedBody = JSON.stringify(requestOptions.body);
+				replaceBody = true;
+			}
+		}
 
 		const signedHeaders = signRequest({
 			method,
 			path,
-			query,
-			body,
+			query: canonicalQuery,
+			body: serializedBody,
 			publicKey: validated.publicKey,
 			secretKey: validated.secretKey,
 		});
 
-		return {
-			...requestOptions,
-			baseURL: validated.baseUrl,
-			headers: {
-				...(requestOptions.headers ?? {}),
-				...signedHeaders,
-				Accept: 'application/json',
-				'User-Agent': PAYMOS_N8N_USER_AGENT,
-			},
+		const existingHeaders = { ...(requestOptions.headers ?? {}) };
+		const hasContentType = Object.keys(existingHeaders).some(
+			(key) => key.toLowerCase() === 'content-type',
+		);
+		const headers: IDataObject = {
+			...existingHeaders,
+			...signedHeaders,
+			Accept: 'application/json',
+			'User-Agent': PAYMOS_N8N_USER_AGENT,
 		};
+		if (replaceBody && serializedBody !== '' && !hasContentType) {
+			headers['Content-Type'] = 'application/json';
+		}
+
+		const nextOptions: IHttpRequestOptions = {
+			...requestOptions,
+			url: isAbsolute ? `${originPrefix}${path}${canonicalQuery}` : `${path}${canonicalQuery}`,
+			qs: undefined,
+			headers,
+		};
+		if (!isAbsolute) {
+			nextOptions.baseURL = validated.baseUrl;
+		}
+		if (replaceBody) {
+			nextOptions.body = serializedBody;
+			nextOptions.json = false;
+		}
+		return nextOptions;
 	};
 
 	test: ICredentialTestRequest = {

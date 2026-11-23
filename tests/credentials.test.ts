@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { PaymosApi } from '../credentials/PaymosApi.credentials';
 import { Paymos } from '../nodes/Paymos/Paymos.node';
 import { PaymosTrigger } from '../nodes/PaymosTrigger/PaymosTrigger.node';
+import { signRequest } from '../src/crypto/signing';
 import { validatePaymentApiCredentials } from '../src/transport/PaymosTransport';
 
 describe('PaymosApi credential & programmatic paymosApiTest', () => {
@@ -54,10 +55,44 @@ describe('PaymosApi credential & programmatic paymosApiTest', () => {
 			},
 		);
 		expect(signed.baseURL).toBe('https://api.paymos.io');
+		expect(signed.url).toBe('/v1/invoices?limit=1');
+		expect(signed.qs).toBeUndefined();
 		expect((signed.headers as Record<string, string>).Authorization).toMatch(
 			/^HMAC-SHA256 pk_test_decl:[A-Za-z0-9+/=]+$/,
 		);
 		expect((signed.headers as Record<string, string>)['X-Request-Timestamp']).toMatch(/^\d+$/);
+
+		// Multi-param unsorted qs must be rewritten onto url in canonical order with qs cleared
+		const callerStatus = ['paid'];
+		const signedMulti = await credential.authenticate(
+			{
+				publicKey: 'pk_test_decl',
+				secretKey: 'sk_test_secret',
+				baseUrl: 'https://api.paymos.io',
+			},
+			{
+				url: '/v1/invoices?status=paid_over#section',
+				method: 'GET',
+				qs: { status: callerStatus, limit: 10 },
+			},
+		);
+		expect(signedMulti.baseURL).toBe('https://api.paymos.io');
+		expect(signedMulti.url).toBe('/v1/invoices?limit=10&status=paid&status=paid_over');
+		expect(signedMulti.qs).toBeUndefined();
+		// Caller's qs array must not be mutated
+		expect(callerStatus).toEqual(['paid']);
+		// Signature must match the exact wire URL/query that n8n will send
+		const multiHeaders = signedMulti.headers as Record<string, string>;
+		const expectedMulti = signRequest({
+			method: 'GET',
+			path: '/v1/invoices',
+			query: '?limit=10&status=paid&status=paid_over',
+			body: '',
+			publicKey: 'pk_test_decl',
+			secretKey: 'sk_test_secret',
+			timestamp: Number(multiHeaders['X-Request-Timestamp']),
+		});
+		expect(multiHeaders.Authorization).toBe(expectedMulti.Authorization);
 
 		const signedAbsolute = await credential.authenticate(
 			{
@@ -66,13 +101,32 @@ describe('PaymosApi credential & programmatic paymosApiTest', () => {
 				baseUrl: 'https://api.paymos.io',
 			},
 			{
-				url: 'https://api.paymos.io/v1/invoices?limit=1',
+				url: 'https://api.paymos.io/v1/invoices?status=paid&limit=1',
 				method: 'GET',
 			},
 		);
+		expect(signedAbsolute.url).toBe('https://api.paymos.io/v1/invoices?limit=1&status=paid');
+		expect(signedAbsolute.qs).toBeUndefined();
 		expect((signedAbsolute.headers as Record<string, string>).Authorization).toMatch(
 			/^HMAC-SHA256 pk_test_decl:[A-Za-z0-9+/=]+$/,
 		);
+
+		// Object body is serialized identically to the signed string with json=false
+		const signedPost = await credential.authenticate(
+			{
+				publicKey: 'pk_test_decl',
+				secretKey: 'sk_test_secret',
+				baseUrl: 'https://api.paymos.io',
+			},
+			{
+				url: '/v1/invoices',
+				method: 'POST',
+				body: { amount: '10.00', currency: 'USD' },
+			},
+		);
+		expect(signedPost.body).toBe('{"amount":"10.00","currency":"USD"}');
+		expect(signedPost.json).toBe(false);
+		expect((signedPost.headers as Record<string, string>)['Content-Type']).toBe('application/json');
 
 		await expect(
 			credential.authenticate(
