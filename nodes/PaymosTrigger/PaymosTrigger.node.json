@@ -1,0 +1,29 @@
+{
+	"node": "n8n-nodes-paymos.paymosTrigger",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Finance & Accounting", "Sales"],
+	"subcategories": {
+		"Finance & Accounting": ["Payments"]
+	},
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://paymos.io/docs/n8n"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://paymos.io/docs/n8n"
+			}
+		]
+	},
+	"alias": [
+		"Paymos",
+		"Webhook",
+		"Crypto Payments",
+		"Stablecoin",
+		"Invoice Paid",
+		"Deposit Confirmed"
+	]
+}

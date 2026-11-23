@@ -1,0 +1,34 @@
+{
+	"node": "n8n-nodes-paymos.paymos",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Finance & Accounting", "Sales"],
+	"subcategories": {
+		"Finance & Accounting": ["Payments"]
+	},
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://paymos.io/docs/n8n"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://paymos.io/docs/n8n"
+			}
+		]
+	},
+	"alias": [
+		"Paymos",
+		"Crypto Payments",
+		"Stablecoin",
+		"USDT",
+		"USDC",
+		"USD1",
+		"DAI",
+		"XAUT",
+		"Invoice",
+		"Payment Channel",
+		"Refund"
+	]
+}

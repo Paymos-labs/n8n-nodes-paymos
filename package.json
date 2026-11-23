@@ -1,0 +1,66 @@
+{
+  "name": "n8n-nodes-paymos",
+  "version": "0.1.0",
+  "description": "Official n8n community node for Paymos: accept stablecoin (USDT, USDC, USD1, DAI) and gold-backed XAUT payments across 13 networks, manage Payment Channels and refunds, and verify Paymos webhooks.",
+  "keywords": [
+    "n8n-community-node-package",
+    "n8n",
+    "paymos",
+    "payments",
+    "stablecoins",
+    "usdt",
+    "usdc",
+    "xaut",
+    "crypto",
+    "webhooks"
+  ],
+  "license": "MIT",
+  "homepage": "https://paymos.io/docs/n8n",
+  "author": {
+    "name": "Paymos Labs",
+    "email": "support@paymos.io"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Paymos-labs/n8n-nodes-paymos.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Paymos-labs/n8n-nodes-paymos/issues"
+  },
+  "files": [
+    "dist"
+  ],
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "strict": true,
+    "credentials": [
+      "dist/credentials/PaymosApi.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/Paymos/Paymos.node.js",
+      "dist/nodes/PaymosTrigger/PaymosTrigger.node.js"
+    ]
+  },
+  "engines": {
+    "node": ">=20.15"
+  },
+  "scripts": {
+    "build": "n8n-node build",
+    "check": "tsc --noEmit",
+    "lint": "n8n-node lint",
+    "test": "vitest run"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@n8n/node-cli": "0.20.0",
+    "@types/node": "^22.10.0",
+    "eslint": "^9.29.0",
+    "n8n-workflow": "2.16.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.2.4"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}
