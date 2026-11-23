@@ -21,7 +21,7 @@ describe('Release provenance workflow & product-facts compliance', () => {
 		expect(workflow).toContain('npm run lint');
 		expect(workflow).toContain('npm run build');
 		expect(workflow).toContain('npm pack');
-		expect(workflow).toMatch(/npm (stage )?publish --access public/);
+		expect(workflow).toContain('npm publish --access public --provenance');
 	});
 
 	it('keeps README.md and Creator Portal checklist faithful to Paymos product facts', () => {
