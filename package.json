@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-paymos",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Official n8n community node for Paymos: accept stablecoin (USDT, USDC, USD1, DAI) and gold-backed XAUT payments across 13 networks, manage Payment Channels and refunds, and verify Paymos webhooks.",
   "keywords": [
     "n8n-community-node-package",
@@ -51,6 +51,9 @@
     "test": "vitest run"
   },
   "dependencies": {},
+  "peerDependencies": {
+    "n8n-workflow": "*"
+  },
   "devDependencies": {
     "@n8n/node-cli": "0.20.0",
     "@types/node": "^22.10.0",

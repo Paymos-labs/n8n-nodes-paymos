@@ -17,6 +17,7 @@ describe('n8n Verified Community Node compliance', () => {
 			keywords: string[];
 			files: string[];
 			dependencies?: Record<string, string>;
+			peerDependencies?: Record<string, string>;
 			n8n: {
 				n8nNodesApiVersion: number;
 				credentials: string[];
@@ -30,6 +31,7 @@ describe('n8n Verified Community Node compliance', () => {
 		expect(PAYMOS_N8N_USER_AGENT).toBe(`paymos-n8n/${pkg.version}`);
 		expect(pkg.keywords).toContain('n8n-community-node-package');
 		expect(Object.keys(pkg.dependencies ?? {})).toEqual([]);
+		expect(pkg.peerDependencies?.['n8n-workflow']).toBe('*');
 		expect(pkg.files).toEqual(['dist']);
 		expect(pkg.files).not.toContain('tests');
 		expect(pkg.files).not.toContain('conformance');

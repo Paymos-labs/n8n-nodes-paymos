@@ -20,6 +20,69 @@ describe('PaymosApi credential & programmatic paymosApiTest', () => {
 		expect(fields.get('webhookSecret')?.required).toBe(false);
 		expect(fields.get('webhookSecret')?.typeOptions).toEqual({ password: true });
 		expect(fields.get('baseUrl')?.default).toBe('https://api.paymos.io');
+
+		// Declarative credential test & HMAC authenticate function for n8n Creator Portal scanner
+		expect(credential.test).toEqual({
+			request: {
+				baseURL: '={{$credentials.baseUrl}}',
+				url: '/v1/invoices',
+				method: 'GET',
+				qs: {
+					limit: 1,
+				},
+			},
+		});
+		expect(typeof credential.authenticate).toBe('function');
+	});
+
+	it('signs declarative test requests via PaymosApi.authenticate and rejects rk_ keys', async () => {
+		const credential = new PaymosApi();
+		if (typeof credential.authenticate !== 'function') {
+			throw new Error('Expected functional authenticate');
+		}
+		const signed = await credential.authenticate(
+			{
+				publicKey: 'pk_test_decl',
+				secretKey: 'sk_test_secret',
+				baseUrl: 'https://api.paymos.io',
+			},
+			{
+				baseURL: 'https://api.paymos.io',
+				url: '/v1/invoices',
+				method: 'GET',
+				qs: { limit: 1 },
+			},
+		);
+		expect(signed.baseURL).toBe('https://api.paymos.io');
+		expect((signed.headers as Record<string, string>).Authorization).toMatch(
+			/^HMAC-SHA256 pk_test_decl:[A-Za-z0-9+/=]+$/,
+		);
+		expect((signed.headers as Record<string, string>)['X-Request-Timestamp']).toMatch(/^\d+$/);
+
+		const signedAbsolute = await credential.authenticate(
+			{
+				publicKey: 'pk_test_decl',
+				secretKey: 'sk_test_secret',
+				baseUrl: 'https://api.paymos.io',
+			},
+			{
+				url: 'https://api.paymos.io/v1/invoices?limit=1',
+				method: 'GET',
+			},
+		);
+		expect((signedAbsolute.headers as Record<string, string>).Authorization).toMatch(
+			/^HMAC-SHA256 pk_test_decl:[A-Za-z0-9+/=]+$/,
+		);
+
+		await expect(
+			credential.authenticate(
+				{
+					publicKey: 'rk_live_payout',
+					secretKey: 'sk_live_secret',
+				},
+				{ url: '/v1/invoices', method: 'GET' },
+			),
+		).rejects.toThrow(/Payout API keys \(rk_\) are not supported/);
 	});
 
 	it('accepts pk_live_ (production) and pk_test_ (sandbox) and rejects rk_ and invalid prefixes', () => {

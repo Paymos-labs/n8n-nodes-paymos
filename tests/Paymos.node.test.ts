@@ -1,5 +1,12 @@
 /* eslint-disable @n8n/community-nodes/no-restricted-imports */
-import type { IDataObject, IExecuteFunctions, INode, INodePropertyOptions } from 'n8n-workflow';
+import {
+	NodeApiError,
+	NodeOperationError,
+	type IDataObject,
+	type IExecuteFunctions,
+	type INode,
+	type INodePropertyOptions,
+} from 'n8n-workflow';
 import { describe, expect, it, vi } from 'vitest';
 import { Paymos } from '../nodes/Paymos/Paymos.node';
 import {
@@ -827,5 +834,45 @@ describe('Paymos action node', () => {
 				pairedItem: { item: 0 },
 			},
 		]);
+	});
+
+	it('throws NodeApiError for PaymosApiError and NodeOperationError for local validation failures when continueOnFail is off', async () => {
+		const node = new Paymos();
+
+		const apiHttp = vi.fn().mockResolvedValue({
+			statusCode: 422,
+			headers: {},
+			body: JSON.stringify({
+				status: 422,
+				detail: 'Amount must be positive.',
+				code: 'validation_error',
+				field: 'amount',
+			}),
+		});
+		await expect(
+			node.execute.call(
+				createExecuteContext({
+					httpRequest: apiHttp,
+					params: {
+						resource: 'invoice',
+						operation: 'get',
+						invoiceId: 'inv_bad',
+					},
+				}),
+			),
+		).rejects.toBeInstanceOf(NodeApiError);
+
+		await expect(
+			node.execute.call(
+				createExecuteContext({
+					httpRequest: vi.fn(),
+					params: {
+						resource: 'invoice',
+						operation: 'get',
+						invoiceId: '',
+					},
+				}),
+			),
+		).rejects.toBeInstanceOf(NodeOperationError);
 	});
 });

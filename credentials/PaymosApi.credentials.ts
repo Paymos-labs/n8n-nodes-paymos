@@ -1,4 +1,17 @@
-import type { Icon, ICredentialType, INodeProperties } from 'n8n-workflow';
+import type {
+	IAuthenticate,
+	ICredentialDataDecryptedObject,
+	ICredentialTestRequest,
+	ICredentialType,
+	IHttpRequestOptions,
+	Icon,
+	INodeProperties,
+} from 'n8n-workflow';
+import { signRequest, type QueryParams } from '../src/crypto/signing';
+import {
+	PAYMOS_N8N_USER_AGENT,
+	validatePaymentApiCredentials,
+} from '../src/transport/PaymosTransport';
 
 export class PaymosApi implements ICredentialType {
 	name = 'paymosApi';
@@ -58,4 +71,83 @@ export class PaymosApi implements ICredentialType {
 				'Paymos Merchant API base URL. Keep https://api.paymos.io for both Production and Sandbox.',
 		},
 	];
+
+	authenticate: IAuthenticate = async (
+		credentials: ICredentialDataDecryptedObject,
+		requestOptions: IHttpRequestOptions,
+	): Promise<IHttpRequestOptions> => {
+		const validated = validatePaymentApiCredentials({
+			publicKey: String(credentials.publicKey ?? ''),
+			secretKey: String(credentials.secretKey ?? ''),
+			webhookSecret:
+				credentials.webhookSecret === undefined ? undefined : String(credentials.webhookSecret),
+			baseUrl: credentials.baseUrl === undefined ? undefined : String(credentials.baseUrl),
+		});
+
+		const method = (requestOptions.method ?? 'GET').toUpperCase();
+		const rawUrl = typeof requestOptions.url === 'string' ? requestOptions.url : '/v1/invoices';
+		let path: string;
+		let inlineQuery: string | undefined;
+		if (/^https?:\/\//i.test(rawUrl)) {
+			const parsedUrl = new URL(rawUrl);
+			path = parsedUrl.pathname || '/';
+			inlineQuery = parsedUrl.search ? parsedUrl.search.slice(1) : undefined;
+		} else {
+			const [pathPart, queryPart] = rawUrl.split('?', 2);
+			path = pathPart.startsWith('/') ? pathPart : `/${pathPart}`;
+			inlineQuery = queryPart;
+		}
+		const mergedQuery: QueryParams = { ...((requestOptions.qs as QueryParams | undefined) ?? {}) };
+		if (inlineQuery !== undefined && inlineQuery !== '') {
+			for (const [k, v] of new URLSearchParams(inlineQuery).entries()) {
+				const existing = mergedQuery[k];
+				if (existing === undefined) {
+					mergedQuery[k] = v;
+				} else if (Array.isArray(existing)) {
+					existing.push(v);
+				} else {
+					mergedQuery[k] = [String(existing), v];
+				}
+			}
+		}
+		const query: QueryParams | undefined =
+			Object.keys(mergedQuery).length > 0 ? mergedQuery : undefined;
+		const body =
+			requestOptions.body === undefined || requestOptions.body === null
+				? ''
+				: typeof requestOptions.body === 'string'
+					? requestOptions.body
+					: JSON.stringify(requestOptions.body);
+
+		const signedHeaders = signRequest({
+			method,
+			path,
+			query,
+			body,
+			publicKey: validated.publicKey,
+			secretKey: validated.secretKey,
+		});
+
+		return {
+			...requestOptions,
+			baseURL: validated.baseUrl,
+			headers: {
+				...(requestOptions.headers ?? {}),
+				...signedHeaders,
+				Accept: 'application/json',
+				'User-Agent': PAYMOS_N8N_USER_AGENT,
+			},
+		};
+	};
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{$credentials.baseUrl}}',
+			url: '/v1/invoices',
+			method: 'GET',
+			qs: {
+				limit: 1,
+			},
+		},
+	};
 }

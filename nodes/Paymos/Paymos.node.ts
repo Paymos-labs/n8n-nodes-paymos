@@ -1,4 +1,5 @@
 import {
+	NodeApiError,
 	NodeConnectionTypes,
 	NodeOperationError,
 	type ICredentialsDecrypted,
@@ -10,6 +11,7 @@ import {
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
+	type JsonObject,
 } from 'n8n-workflow';
 import { encodePathSegment, type QueryParams } from '../../src/crypto/signing';
 import {
@@ -551,8 +553,18 @@ export class Paymos implements INodeType {
 					});
 					continue;
 				}
-				if (error instanceof NodeOperationError) {
-					throw error;
+				if (error instanceof PaymosApiError) {
+					const errorBody: JsonObject = {
+						message: error.message,
+						httpCode: String(error.status),
+						...(error.code !== '' ? { code: error.code } : {}),
+						...(error.field !== null ? { field: error.field } : {}),
+					};
+					throw new NodeApiError(this.getNode(), errorBody, {
+						itemIndex,
+						httpCode: String(error.status),
+						message: error.message,
+					});
 				}
 				throw new NodeOperationError(
 					this.getNode(),

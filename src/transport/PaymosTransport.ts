@@ -10,7 +10,7 @@ import {
 import { canonicalizeQuery, signRequest, type QueryParams } from '../crypto/signing';
 
 export const PAYMOS_DEFAULT_BASE_URL = 'https://api.paymos.io';
-export const PAYMOS_N8N_USER_AGENT = 'paymos-n8n/0.2.0';
+export const PAYMOS_N8N_USER_AGENT = 'paymos-n8n/0.2.1';
 export const PAYMOS_MAX_PAGE_LIMIT = 100;
 export const PAYMOS_DEFAULT_PAGE_LIMIT = 20;
 export const PAYMOS_DEFAULT_MAX_PAGES = 100;

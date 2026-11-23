@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-11-23
+
+- fix(n8n): pass n8n Creator Portal automated review checks
+
 ## [0.2.0] - 2026-11-23
 
 - feat(n8n): switch publish.yml to OIDC Trusted Publisher (npm publish --access public --provenance)
