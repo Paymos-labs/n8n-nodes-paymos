@@ -1,8 +1,14 @@
 # n8n-nodes-paymos
 
+**English** | [简体中文](docs/README.zh-CN.md) | [Русский](docs/README.ru.md) | [Español](docs/README.es.md) | [Deutsch](docs/README.de.md) | [Türkçe](docs/README.tr.md)
+
 Official n8n community node package for [Paymos](https://paymos.io) — accept stablecoin (**USDT, USDC, USD1, DAI**) and gold-backed **XAUT** payments across **13 networks**, manage per-customer Payment Channels and server-calculated invoice refunds, and trigger workflows on verified Paymos webhooks.
 
 Designed for both **n8n Cloud** and **Self-Hosted n8n** with **zero runtime dependencies** (`"dependencies": {}`), built-in `node:crypto` HMAC-SHA256 signing and raw-body webhook verification, and AI Agent support (`usableAsTool: true`).
+
+[![Watch: Paymos API Quickstart in 10 Minutes — Sandbox to Signed Webhooks](https://i.ytimg.com/vi/aHQfHszuRBo/maxresdefault.jpg)](https://www.youtube.com/watch?v=aHQfHszuRBo)
+
+> **Video walkthrough (1:22, subtitles in 6 languages):** [Watch on YouTube](https://www.youtube.com/watch?v=aHQfHszuRBo)
 
 ## Highlights
 
@@ -121,6 +127,20 @@ Deliveries missing `rawBody`, failing HMAC verification, or exceeding the 300-se
 | Webhooks missing or `401` on Self-Hosted n8n | Register the trigger's **Production URL**, configure public HTTPS `N8N_WEBHOOK_URL`, and forward the exact raw body without re-serialising JSON. |
 | `Sandbox simulation operations require a Sandbox Payment API key (pk_test_)` | Switch to a Sandbox `pk_test_` credential or remove `Simulate Sandbox *` nodes before going live. |
 | **Paymos** not listed under AI Agent tools (Self-Hosted) | Set `N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE=true` and restart n8n. |
+
+## Frequently Asked Questions
+
+### Does `n8n-nodes-paymos` work on n8n Cloud and Self-Hosted n8n?
+Yes. The package ships with zero external runtime npm dependencies (`"dependencies": {}`), uses Node's built-in `node:crypto` for HMAC-SHA256 signing and raw-body `X-Webhook-Signature` verification, and follows n8n's Verified Community Node guidelines. Self-hosted instances can install `n8n-nodes-paymos` via **Settings → Community Nodes** or `npm install n8n-nodes-paymos`.
+
+### Can I attach Paymos as a tool to an n8n AI Agent?
+Yes. The `Paymos` node sets `usableAsTool: true` so n8n AI Agent workflows can create hosted-checkout invoices, query payment status, provision per-customer Payment Channels, and issue server-calculated invoice refunds using a Payment-only key (`pk_live_` or `pk_test_`). On self-hosted n8n, set `N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE=true`.
+
+### Why are payout keys (`rk_`) and Withdrawals excluded from v1?
+By design, `n8n-nodes-paymos` stays strictly inside the **Payment API boundary** (`pk_live_` / `pk_test_`) so workflow automations and AI Agents can accept stablecoin/XAUT payments and process invoice refunds without holding treasury withdrawal credentials (`rk_`).
+
+### Which assets, networks, and webhook events are supported?
+Paymos supports **5 assets** (4 stablecoins: **USDT, USDC, USD1, DAI** + gold-backed **XAUT**) across **13 deposit networks**, **45 fiat pricing currencies**, and all **18 canonical webhook events** (`invoice.*`, `payment_channel.deposit.*`, `withdrawal.*`) verified against `rawBody` with a 300-second replay window.
 
 ## Development
 

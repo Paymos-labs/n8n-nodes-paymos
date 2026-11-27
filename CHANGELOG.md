@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-11-27
+
+- fix(n8n): remove undocumented codex subcategories and upgrade @n8n/node-cli to 0.25.0
+- docs(n8n-nodes-paymos): fix relative ../LICENSE link in docs/README.*.md
+- docs(plugins): add 6-language READMEs (EN/zh-CN/ru/es/de/tr) and YouTube walkthrough previews across all 25 Paymos-labs repos
+- chore(mcp,n8n): add marketplace PNG logos, Dockerfile, Glama badge/config, MCP Registry CI job, and GEO FAQs
+
 ## [0.2.3] - 2026-11-23
 
 - fix(tests,blazor,n8n): resolve all failing Fast suite, architecture guard, and MoneyFormat notification tests

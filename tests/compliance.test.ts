@@ -115,4 +115,34 @@ describe('n8n Verified Community Node compliance', () => {
 		expect(existsSync(resolve(packageRoot, 'AGENTS.md'))).toBe(false);
 		expect(existsSync(resolve(packageRoot, 'CLAUDE.md'))).toBe(false);
 	});
+
+	it('keeps node codex files strictly within documented keys and @n8n/node-cli >= 0.23.0', () => {
+		const allowedCodexKeys = new Set([
+			'node',
+			'nodeVersion',
+			'codexVersion',
+			'categories',
+			'resources',
+			'alias',
+		]);
+
+		for (const codexRel of [
+			'nodes/Paymos/Paymos.node.json',
+			'nodes/PaymosTrigger/PaymosTrigger.node.json',
+		]) {
+			const codex = JSON.parse(readFileSync(resolve(packageRoot, codexRel), 'utf8')) as Record<
+				string,
+				unknown
+			>;
+			const unexpectedKeys = Object.keys(codex).filter((k) => !allowedCodexKeys.has(k));
+			expect(unexpectedKeys, codexRel).toEqual([]);
+		}
+
+		const pkg = JSON.parse(readFileSync(resolve(packageRoot, 'package.json'), 'utf8')) as {
+			devDependencies?: Record<string, string>;
+		};
+		const cliVersion = (pkg.devDependencies?.['@n8n/node-cli'] ?? '').replace(/^[^\d]*/, '');
+		const [major, minor] = cliVersion.split('.').map(Number);
+		expect(major > 0 || minor >= 23, `@n8n/node-cli=${cliVersion}`).toBe(true);
+	});
 });

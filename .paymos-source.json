@@ -1,6 +1,6 @@
 {
   "source_repository": "Paymos-labs/paymos",
   "source_path": "plugins/n8n-nodes-paymos",
-  "source_commit": "e4fac3db1b4145f413c2a28d4a7b2ef3f8036a37",
-  "version": "0.2.3"
+  "source_commit": "a1195c49b11a9f1c6a632122606b84f0333283bf",
+  "version": "0.2.4"
 }
